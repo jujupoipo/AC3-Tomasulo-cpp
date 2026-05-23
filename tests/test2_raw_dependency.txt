@@ -1,0 +1,8 @@
+# Teste 2: Dependências RAW (Read After Write) intensas
+# F6 depende de F2, F8 depende de F6, F0 depende de F8
+# Verifica se a propagação via CDB está funcionando ciclo a ciclo.
+
+L.D F2, 10, R1
+ADD.D F6, F2, F4
+SUB.D F8, F6, F2
+MUL.D F0, F8, F6

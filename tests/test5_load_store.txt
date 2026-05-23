@@ -1,0 +1,9 @@
+# Teste 5: Múltiplos Load/Store
+# Verifica a lógica de buffers de memória e base registers.
+
+L.D F2, 10, R1
+L.D F4, 20, R1
+ADD.D F6, F2, F4
+S.D F6, 30, R1
+L.D F8, 40, R1
+S.D F8, 50, R1

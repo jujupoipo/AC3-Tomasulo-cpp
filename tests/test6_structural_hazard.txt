@@ -1,0 +1,7 @@
+# Teste 3: Risco Estrutural (Saturação de Reservation Stations)
+# Temos apenas 3 RS para ADD/SUB. O 4º ADD deve causar STALL no Issue.
+
+ADD.D F2, F4, F6
+ADD.D F8, F10, F12
+ADD.D F14, F16, F18
+ADD.D F20, F22, F24  # Esta instrução deve esperar uma RS de ADD desocupar
