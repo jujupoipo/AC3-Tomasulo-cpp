@@ -22,6 +22,12 @@ constexpr int NUM_MULT_RS = 2;  // Mult1, Mult2
 constexpr int NUM_LOAD_BUFFERS  = 3;  // Load1, Load2, Load3
 constexpr int NUM_STORE_BUFFERS = 3;  // Store1, Store2, Store3
 
+// --- Número de Barramentos Comuns de Dados (CDB) ---
+// Define quantos Write Results podem ocorrer por ciclo.
+// O padrão clássico do Tomasulo é 1 CDB, mas processadores
+// superescalares modernos podem ter múltiplos CDBs.
+constexpr int NUM_CDB = 1;
+
 // --- Quantidade de Registradores de Ponto Flutuante ---
 constexpr int NUM_FP_REGISTERS = 32;  // F0 a F31
 

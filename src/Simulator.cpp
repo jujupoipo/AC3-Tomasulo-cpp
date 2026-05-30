@@ -262,6 +262,8 @@ void Simulator::processExecution() {
 //   - Libera a RS (busy = false).
 // ############################################################
 void Simulator::processWriteResult() {
+    int writesThisCycle = 0;
+
     for (auto& rs : reservStations_) {
         if (!rs.busy) continue;
         if (!rs.executing) continue;
@@ -315,8 +317,9 @@ void Simulator::processWriteResult() {
         rs.instrIndex = -1;
         rs.cyclesRemaining = 0;
 
-        // Apenas 1 Write Result por ciclo (CDB único)
-        break;
+        // Limita o número de Write Results por ciclo ao número de CDBs
+        writesThisCycle++;
+        if (writesThisCycle >= NUM_CDB) break;
     }
 }
 
