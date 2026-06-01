@@ -3,12 +3,9 @@
 
 #include "Simulator.h"
 
-// ============================================================
 // main.cpp - Ponto de entrada do simulador do Tomasulo
-// ============================================================
 // Uso: ./tomasulo [caminho_do_arquivo_de_instruções]
 // Se nenhum caminho for informado, usa "instructions.txt".
-// ============================================================
 
 int main(int argc, char* argv[]) {
     std::string filepath = "instructions.txt";

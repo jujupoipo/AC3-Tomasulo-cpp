@@ -47,7 +47,6 @@ void Simulator::initRegisters() {
     for (int i = 0; i < NUM_FP_REGISTERS; ++i) {
         std::string regName = "F" + std::to_string(i);
         regStatus_[regName] = RegisterStatus();
-        // valor inicial arbitrário para demonstração
         // (registradores pares recebem valor baseado no índice)
         regValues_[regName] = static_cast<double>(i);
     }
