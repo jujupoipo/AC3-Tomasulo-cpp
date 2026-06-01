@@ -4,11 +4,9 @@
 #include <iomanip>
 #include <cmath>
 
-// ============================================================
-// Simulator.cpp - Motor do Algoritmo de Tomasulo
-// ============================================================
+// simulator.cpp - motor do algoritmo de tomasulo
 
-// ---- Construtor ----
+// construtor
 Simulator::Simulator(const std::vector<Instruction>& instructions)
     : clock_(0), nextIssue_(0), instructions_(instructions)
 {
@@ -16,27 +14,27 @@ Simulator::Simulator(const std::vector<Instruction>& instructions)
     initRegisters();
 }
 
-// ---- Inicialização das Estações de Reserva ----
+// inicialização das estações de reserva
 void Simulator::initReservationStations() {
-    // Estações de Add/Sub
+    // estações de add/sub
     for (int i = 1; i <= NUM_ADD_RS; ++i) {
         ReservationStation rs;
         rs.name = "Add" + std::to_string(i);
         reservStations_.push_back(rs);
     }
-    // Estações de Mult/Div
+    // estações de mult/div
     for (int i = 1; i <= NUM_MULT_RS; ++i) {
         ReservationStation rs;
         rs.name = "Mult" + std::to_string(i);
         reservStations_.push_back(rs);
     }
-    // Buffers de Load
+    // buffers de load
     for (int i = 1; i <= NUM_LOAD_BUFFERS; ++i) {
         ReservationStation rs;
         rs.name = "Load" + std::to_string(i);
         reservStations_.push_back(rs);
     }
-    // Buffers de Store
+    // buffers de store
     for (int i = 1; i <= NUM_STORE_BUFFERS; ++i) {
         ReservationStation rs;
         rs.name = "Store" + std::to_string(i);
@@ -44,16 +42,16 @@ void Simulator::initReservationStations() {
     }
 }
 
-// ---- Inicialização dos Registradores ----
+// inicialização dos registradores
 void Simulator::initRegisters() {
     for (int i = 0; i < NUM_FP_REGISTERS; ++i) {
         std::string regName = "F" + std::to_string(i);
         regStatus_[regName] = RegisterStatus();
-        // Valor inicial arbitrário para demonstração
+        // valor inicial arbitrário para demonstração
         // (registradores pares recebem valor baseado no índice)
         regValues_[regName] = static_cast<double>(i);
     }
-    // Registradores inteiros (usados como base em Load/Store)
+    // registradores inteiros (usados como base em load/store)
     for (int i = 0; i < 32; ++i) {
         std::string regName = "R" + std::to_string(i);
         regStatus_[regName] = RegisterStatus();
@@ -61,9 +59,7 @@ void Simulator::initRegisters() {
     }
 }
 
-// ============================================================
-// Determina a latência baseado no tipo de operação
-// ============================================================
+// determina a latência baseada no tipo de operação
 int Simulator::getLatency(const std::string& op) const {
     if (op == "ADD.D" || op == "SUB.D") return LATENCY_ADD;
     if (op == "MUL.D")                  return LATENCY_MULT;
@@ -73,17 +69,13 @@ int Simulator::getLatency(const std::string& op) const {
     return 1; // Fallback
 }
 
-// ============================================================
-// Verifica se a operação é Load ou Store
-// ============================================================
+// verifica se a operação é load ou store
 bool Simulator::isLoadStore(const std::string& op) const {
     return (op == "L.D" || op == "S.D");
 }
 
-// ============================================================
-// Encontra uma RS livre para o tipo de operação desejado
-// Retorna o índice no vetor reservStations_, ou -1 se não há.
-// ============================================================
+// encontra uma rs livre para o tipo de operação desejado
+// retorna o índice no vetor reservstations_, ou -1 se não há.
 int Simulator::findFreeRS(const std::string& op) const {
     std::string prefix;
     if (op == "ADD.D" || op == "SUB.D") prefix = "Add";
@@ -97,12 +89,10 @@ int Simulator::findFreeRS(const std::string& op) const {
             return static_cast<int>(i);
         }
     }
-    return -1; // Todas ocupadas — stall estrutural
+    return -1; // todas ocupadas — stall estrutural
 }
 
-// ============================================================
-// Verifica se todas as instruções já terminaram o Write Result
-// ============================================================
+// verifica se todas as instruções já terminaram o write result
 bool Simulator::allInstructionsDone() const {
     for (const auto& instr : instructions_) {
         if (instr.writeResultCycle == 0) return false;
@@ -110,20 +100,17 @@ bool Simulator::allInstructionsDone() const {
     return true;
 }
 
-// ############################################################
-//  ESTÁGIO 1: ISSUE
-// ############################################################
-// Despacha a próxima instrução da fila (em ordem de programa)
+// estágio 1: issue
+// despacha a próxima instrução da fila (em ordem de programa)
 // para uma estação de reserva livre do tipo correto.
-// Se não há RS livre, ocorre stall (a instrução espera).
-// ############################################################
+// se não há rs livre, ocorre stall (a instrução espera).
 void Simulator::processIssue() {
     if (nextIssue_ >= static_cast<int>(instructions_.size())) return;
 
     Instruction& instr = instructions_[nextIssue_];
     int rsIdx = findFreeRS(instr.op);
 
-    if (rsIdx == -1) return; // Stall estrutural: sem RS livre
+    if (rsIdx == -1) return; // stall estrutural: sem rs livre
 
     ReservationStation& rs = reservStations_[rsIdx];
     rs.busy = true;
@@ -131,10 +118,10 @@ void Simulator::processIssue() {
     rs.instrIndex = nextIssue_;
 
     if (instr.op == "L.D") {
-        // L.D Fdest, offset, Rbase
+        // l.d fdest, offset, rbase
         // src1 = offset (imediato), src2 = registrador base
         rs.A = std::stod(instr.src1);
-        // Endereço efetivo = offset + valor do registrador base
+        // endereço efetivo = offset + valor do registrador base
         if (regStatus_.count(instr.src2) && regStatus_[instr.src2].Qi != "") {
             rs.Qj = regStatus_[instr.src2].Qi;
         } else {
@@ -144,18 +131,18 @@ void Simulator::processIssue() {
         rs.Qk = "";
         rs.Vk = 0.0;
     } else if (instr.op == "S.D") {
-        // S.D Fsrc, offset, Rbase
+        // s.d fsrc, offset, rbase
         // dest = registrador fonte (valor a ser armazenado)
         // src1 = offset, src2 = registrador base
         rs.A = std::stod(instr.src1);
-        // Verifica dependência do registrador que contém o valor a armazenar
+        // verifica dependência do registrador que contém o valor a armazenar
         if (regStatus_.count(instr.dest) && regStatus_[instr.dest].Qi != "") {
             rs.Qj = regStatus_[instr.dest].Qi;
         } else {
             rs.Vj = regValues_[instr.dest];
             rs.Qj = "";
         }
-        // Verifica dependência do registrador base
+        // verifica dependência do registrador base
         if (regStatus_.count(instr.src2) && regStatus_[instr.src2].Qi != "") {
             rs.Qk = regStatus_[instr.src2].Qi;
         } else {
@@ -163,15 +150,15 @@ void Simulator::processIssue() {
             rs.Qk = "";
         }
     } else {
-        // Instruções aritméticas: ADD.D, SUB.D, MUL.D, DIV.D
-        // Operando fonte 1 (src1)
+        // instruções aritméticas: add.d, sub.d, mul.d, div.d
+        // operando fonte 1 (src1)
         if (regStatus_.count(instr.src1) && regStatus_[instr.src1].Qi != "") {
             rs.Qj = regStatus_[instr.src1].Qi;
         } else {
             rs.Vj = regValues_[instr.src1];
             rs.Qj = "";
         }
-        // Operando fonte 2 (src2)
+        // operando fonte 2 (src2)
         if (regStatus_.count(instr.src2) && regStatus_[instr.src2].Qi != "") {
             rs.Qk = regStatus_[instr.src2].Qi;
         } else {
@@ -180,26 +167,23 @@ void Simulator::processIssue() {
         }
     }
 
-    // Atualiza o Register Status (RAT) — apenas para instruções que escrevem
-    // em registrador (Load e aritméticas). Store NÃO escreve em registrador.
+    // atualiza o register status (rat) — apenas para instruções que escrevem
+    // em registrador (load e aritméticas). store não escreve em registrador.
     if (instr.op != "S.D") {
         regStatus_[instr.dest].Qi = rs.name;
     }
 
-    // Registra o ciclo de Issue
+    // registra o ciclo de issue
     instr.issueCycle = clock_;
     instr.rsIndex = rsIdx;
     nextIssue_++;
 }
 
-// ############################################################
-//  ESTÁGIO 2: EXECUTE
-// ############################################################
-// Para cada RS ocupada cujos operandos estejam prontos
-// (Qj == "" e Qk == ""), inicia ou continua a execução.
-// Quando os ciclos restantes chegam a 0, a instrução está
-// pronta para o Write Result no próximo ciclo.
-// ############################################################
+// estágio 2: execute
+// para cada rs ocupada cujos operandos estejam prontos
+// (qj == "" e qk == ""), inicia ou continua a execução.
+// quando os ciclos restantes chegam a 0, a instrução está
+// pronta para o write result no próximo ciclo.
 void Simulator::processExecution() {
     for (auto& rs : reservStations_) {
         if (!rs.busy) continue;
@@ -207,30 +191,30 @@ void Simulator::processExecution() {
 
         Instruction& instr = instructions_[rs.instrIndex];
 
-        // Pula instruções que já completaram Write Result
+        // pula instruções que já completaram write result
         if (instr.writeResultCycle != 0) continue;
 
-        // Só pode executar se NÃO foi issue'd neste mesmo ciclo
+        // só pode executar se não foi issue'd neste mesmo ciclo
         if (instr.issueCycle == clock_) continue;
 
-        // Verifica se os operandos estão prontos
+        // verifica se os operandos estão prontos
         if (rs.Qj != "" || rs.Qk != "") continue;
 
-        // Primeira vez executando? Marca o início
+        // primeira vez executando? marca o início
         if (!rs.executing) {
             rs.executing = true;
             rs.cyclesRemaining = getLatency(rs.op);
             instr.execStartCycle = clock_;
         }
 
-        // Decrementa ciclos restantes
+        // decrementa ciclos restantes
         rs.cyclesRemaining--;
 
-        // Se terminou de executar, calcula o resultado
+        // se terminou de executar, calcula o resultado
         if (rs.cyclesRemaining == 0) {
             instr.execEndCycle = clock_;
 
-            // Calcula o valor do resultado
+            // calcula o valor do resultado
             if (rs.op == "ADD.D") {
                 rs.result = rs.Vj + rs.Vk;
             } else if (rs.op == "SUB.D") {
@@ -240,27 +224,24 @@ void Simulator::processExecution() {
             } else if (rs.op == "DIV.D") {
                 rs.result = (rs.Vk != 0.0) ? (rs.Vj / rs.Vk) : 0.0;
             } else if (rs.op == "L.D") {
-                // Simula um acesso à memória: endereço efetivo = A + Vj (base)
-                // Para simulação, retornamos o endereço como valor simbólico
+                // simula um acesso à memória: endereço efetivo = a + vj (base)
+                // para simulação, retornamos o endereço como valor simbólico
                 rs.result = rs.A + rs.Vj;
             } else if (rs.op == "S.D") {
-                // Store: o resultado é o endereço de escrita (não escreve em registrador)
+                // store: o resultado é o endereço de escrita (não escreve em registrador)
                 rs.result = rs.A + rs.Vk;
             }
         }
     }
 }
 
-// ############################################################
-//  ESTÁGIO 3: WRITE RESULT (Broadcast no CDB)
-// ############################################################
-// Se uma RS terminou sua execução (cyclesRemaining == 0 e
-// executing == true), ela publica seu resultado no CDB:
-//   - Atualiza todas as RS que esperavam por esse resultado
-//     (substitui Qj/Qk pelo valor Vj/Vk).
-//   - Atualiza o Register Status e o valor do registrador.
-//   - Libera a RS (busy = false).
-// ############################################################
+// estágio 3: write result (broadcast no cdb)
+// se uma rs terminou sua execução (cyclesremaining == 0 e
+// executing == true), ela publica seu resultado no cdb:
+//   - atualiza todas as rs que esperavam por esse resultado
+//     (substitui qj/qk pelo valor vj/vk).
+//   - atualiza o register status e o valor do registrador.
+//   - libera a rs (busy = false).
 void Simulator::processWriteResult() {
     int writesThisCycle = 0;
 
@@ -272,17 +253,17 @@ void Simulator::processWriteResult() {
 
         Instruction& instr = instructions_[rs.instrIndex];
 
-        // Não pode fazer Write Result no mesmo ciclo que terminou a execução
+        // não pode fazer write result no mesmo ciclo que terminou a execução
         if (instr.execEndCycle == clock_) continue;
 
-        // Já fez Write Result?
+        // já fez write result?
         if (instr.writeResultCycle != 0) continue;
 
-        // Marca o ciclo de Write Result
+        // marca o ciclo de write result
         instr.writeResultCycle = clock_;
 
-        // ---- Broadcast no CDB ----
-        // Percorre todas as RS e substitui dependências
+        // broadcast no cdb
+        // percorre todas as rs e substitui dependências
         for (auto& otherRS : reservStations_) {
             if (!otherRS.busy) continue;
             if (otherRS.Qj == rs.name) {
@@ -295,8 +276,8 @@ void Simulator::processWriteResult() {
             }
         }
 
-        // Atualiza Register Status e valor do registrador
-        // (somente se o RAT ainda aponta para esta RS — proteção contra WAW)
+        // atualiza register status e valor do registrador
+        // (somente se o rat ainda aponta para esta rs — proteção contra waw)
         if (instr.op != "S.D") {
             if (regStatus_[instr.dest].Qi == rs.name) {
                 regStatus_[instr.dest].Qi = "";
@@ -304,7 +285,7 @@ void Simulator::processWriteResult() {
             }
         }
 
-        // Libera a estação de reserva
+        // libera a estação de reserva
         rs.busy = false;
         rs.executing = false;
         rs.op = "";
@@ -317,15 +298,13 @@ void Simulator::processWriteResult() {
         rs.instrIndex = -1;
         rs.cyclesRemaining = 0;
 
-        // Limita o número de Write Results por ciclo ao número de CDBs
+        // limita o número de write results por ciclo ao número de cdbs
         writesThisCycle++;
         if (writesThisCycle >= NUM_CDB) break;
     }
 }
 
-// ############################################################
-//  Loop principal da simulação
-// ############################################################
+// loop principal da simulação
 void Simulator::run() {
     std::cout << "============================================================" << std::endl;
     std::cout << "   SIMULADOR DO ALGORITMO DE TOMASULO" << std::endl;
@@ -334,15 +313,15 @@ void Simulator::run() {
     std::cout << "Pressione ENTER para avançar ciclo a ciclo..." << std::endl;
     std::cout << "============================================================\n" << std::endl;
 
-    // Imprime estado inicial (ciclo 0)
+    // imprime estado inicial (ciclo 0)
     printState();
 
     while (!allInstructionsDone()) {
-        std::cin.get(); // Espera o usuário pressionar ENTER
+        std::cin.get(); // espera o usuário pressionar enter
 
         clock_++;
 
-        // Processa os estágios de trás para frente para evitar
+        // processa os estágios de trás para frente para evitar
         // que uma instrução avance mais de um estágio por ciclo.
         processWriteResult();
         processExecution();
@@ -351,13 +330,13 @@ void Simulator::run() {
         printState();
     }
 
-    // Impressão final: valores dos registradores
+    // impressão final: valores dos registradores
     std::cout << "\n============================================================" << std::endl;
     std::cout << "   SIMULAÇÃO CONCLUÍDA" << std::endl;
     std::cout << "============================================================" << std::endl;
     std::cout << "\n--- Valores Finais dos Registradores ---\n" << std::endl;
 
-    // Coleta os registradores utilizados nas instruções
+    // coleta os registradores utilizados nas instruções
     std::vector<std::string> usedRegs;
     for (const auto& instr : instructions_) {
         auto addIfNew = [&](const std::string& r) {
@@ -379,9 +358,7 @@ void Simulator::run() {
     std::cout << std::endl;
 }
 
-// ############################################################
-//  IMPRESSÃO DO ESTADO (Tabelas como nos slides)
-// ############################################################
+// impressão do estado (tabelas como nos slides)
 
 void Simulator::printInstructionStatus() const {
     std::cout << "┌─────────────────────────────────────────────────────────────────────────┐" << std::endl;
@@ -437,7 +414,7 @@ void Simulator::printReservationStations() const {
                   << std::setw(4) << rs.name << " │ "
                   << std::setw(6) << std::left << (rs.busy ? rs.op : "") << std::right << " │ ";
 
-        // Vj
+        // vj
         if (rs.busy && rs.Qj == "") {
             std::cout << std::setw(8) << std::fixed << std::setprecision(1) << rs.Vj;
         } else {
@@ -445,7 +422,7 @@ void Simulator::printReservationStations() const {
         }
         std::cout << " │ ";
 
-        // Vk
+        // vk
         if (rs.busy && rs.Qk == "") {
             std::cout << std::setw(8) << std::fixed << std::setprecision(1) << rs.Vk;
         } else {
@@ -455,7 +432,7 @@ void Simulator::printReservationStations() const {
                   << std::setw(6) << rs.Qj << " │ "
                   << std::setw(6) << rs.Qk << " │ ";
 
-        // A (endereço)
+        // a (endereço)
         if (rs.busy && (rs.op == "L.D" || rs.op == "S.D")) {
             std::cout << std::setw(7) << std::fixed << std::setprecision(0) << rs.A;
         } else {
@@ -474,7 +451,7 @@ void Simulator::printRegisterStatus() const {
     std::cout << "│                        REGISTER STATUS (RAT)                            │" << std::endl;
     std::cout << "├";
 
-    // Coleta registradores FP usados para exibição compacta
+    // coleta registradores fp usados para exibição compacta
     std::vector<std::string> displayRegs;
     for (int i = 0; i < NUM_FP_REGISTERS; i += 2) {
         displayRegs.push_back("F" + std::to_string(i));
@@ -486,14 +463,14 @@ void Simulator::printRegisterStatus() const {
     }
     std::cout << "┤" << std::endl;
 
-    // Nomes dos registradores
+    // nomes dos registradores
     std::cout << "│";
     for (const auto& reg : displayRegs) {
         std::cout << std::setw(7) << reg << " │";
     }
     std::cout << std::endl;
 
-    // Separador
+    // separador
     std::cout << "├";
     for (size_t i = 0; i < displayRegs.size(); ++i) {
         std::cout << "────────";
@@ -501,7 +478,7 @@ void Simulator::printRegisterStatus() const {
     }
     std::cout << "┤" << std::endl;
 
-    // Valores (Qi)
+    // valores (qi)
     std::cout << "│";
     for (const auto& reg : displayRegs) {
         auto it = regStatus_.find(reg);
